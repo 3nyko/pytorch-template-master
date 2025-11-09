@@ -24,6 +24,7 @@ def main(config):
     # setup data_loader instances
     data_loader = config.init_obj('data_loader', module_data)
     valid_data_loader = data_loader.split_validation()
+    print_data_info(data_loader, valid_data_loader)
 
     # build model architecture, then print to console
     model = config.init_obj('arch', module_arch)
@@ -53,6 +54,19 @@ def main(config):
 
     trainer.train()
 
+def print_data_info(data_loader, valid_data_loader):
+    """
+    Get train and val sample count
+    """
+    num_train_samples = len(data_loader.dataset) if hasattr(data_loader, 'dataset') else len(data_loader.data_loader.dataset)
+    num_val_samples = len(valid_data_loader.dataset) if valid_data_loader is not None else 0
+
+    num_train_batches = len(data_loader)
+    num_val_batches = len(valid_data_loader) if valid_data_loader is not None else 0
+
+    print("\nDataset info:")
+    print(f"\tTraining samples:   {num_train_samples} ({num_train_batches} batches)")
+    print(f"\tValidation samples: {num_val_samples} ({num_val_batches} batches)")
 
 if __name__ == '__main__':
     args = argparse.ArgumentParser(description='PyTorch Template')

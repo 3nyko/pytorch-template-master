@@ -6,6 +6,9 @@ from torchvision import datasets, transforms
 from base import BaseDataLoader
 from enum import Enum
 
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 # =====================================================
 # =========       Constants and options       =========
 # =====================================================
@@ -24,6 +27,74 @@ DEFAULT_MODE = Mode.HEXADECIMAL
 # ======================================================
 
 class CICIoV2024_Dataset(Dataset):
+    """
+    Dataset loader for already split CICIoV2024 dataset
+    """
+
+    def __init__(self, data_dir, mode=DEFAULT_MODE, split="train"):
+        self.mode = mode
+
+        if split not in ["train", "val", "test"]:
+            raise ValueError(f"Invalid split: {split}. Must be one of ['train', 'val', 'test'].")
+
+        self.split = split
+
+        # cesta k csv souboru
+        self.file_path = os.path.join(data_dir, self.mode.value, f"{split}.csv")
+        if not os.path.isfile(self.file_path):
+            raise FileNotFoundError(f"CSV file not found: {self.file_path}")
+
+        # načti data
+        self.data = pd.read_csv(self.file_path, low_memory=False)
+        self.data.columns = [c.strip() for c in self.data.columns]  # normalize column names
+
+        # vyber pouze datové sloupce
+        self.data_no_labels = self._remove_labels(self.data)
+        self.labels = self._map_labels(self.data["label"])
+
+    def _remove_labels(self, df):
+        """Return data columns (DATA_0 ... DATA_7)"""
+        feature_cols = [c for c in df.columns if c.startswith("DATA_")]
+        if not feature_cols:
+            raise ValueError("No DATA_ columns found in dataset.")
+        return df[feature_cols].values
+
+    def _map_labels(self, labels):
+        """BENIGN = 0, ATTACK = 1"""
+        mapped = labels.str.upper().map(lambda x: 0 if "BENIGN" in x else 1)
+        return mapped.values
+
+    def __len__(self):
+        return len(self.data_no_labels)
+
+    def __getitem__(self, idx):
+        x = self.data_no_labels[idx].copy()
+
+        def safe_int(val, base):
+            # Pandas často čte hodnoty jako float → přetypujeme na string
+            if isinstance(val, (int, float)): # if number, just return
+                return int(val)
+            s = str(val).strip()
+            if "." in s and s.replace(".", "").isdigit(): # for broken HEX values like 2.0 -> 2
+                return int(float(s))
+            return int(s, base)
+
+        # Převod podle módu
+        if self.mode in [Mode.BINARY, Mode.BINARY.value]:
+            x = [safe_int(v, base=2) for v in x]
+        elif self.mode in [Mode.HEXADECIMAL, Mode.HEXADECIMAL.value]:
+            x = [safe_int(v, base=16) for v in x]
+        elif self.mode in [Mode.DECIMAL, Mode.DECIMAL.value]:
+            x = [float(v) if not pd.isna(v) else 0.0 for v in x]
+        else:
+            raise ValueError(f"Unsupported mode: {self.mode}")
+
+        x = torch.tensor(x, dtype=torch.float32)
+        y = torch.tensor(self.labels[idx], dtype=torch.long)
+        return x, y
+
+
+class CICIoV2024_Dataset_no_split(Dataset):
     """
     Loads all CSVs from the given CICIoV2024 mode folder (binary/decimal/hexadecimal).
     Each CSV must contain DATA_0 ... DATA_7 columns and 'label'.
@@ -94,11 +165,43 @@ class CICIoV2024_Dataset(Dataset):
 # ========================================================
 # =========             DataLoader              ==========
 # ========================================================
-class CICIoV2024_DataLoader(BaseDataLoader):
+
+class CICIoV2024_DataLoader:
+    """
+    DataLoader for CICIoV2024_split dataset (uses predefined train.csv and val.csv instead of random split)
+    """
+    def __init__(self, data_dir, batch_size, mode=DEFAULT_MODE, num_workers=2, shuffle=True):
+        self.batch_size = batch_size
+        # trénovací dataset
+        train_dataset = CICIoV2024_Dataset(data_dir=data_dir, mode=mode, split="train")
+        self.data_loader = torch.utils.data.DataLoader(
+            train_dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers
+        )
+
+        # validační dataset
+        val_dataset = CICIoV2024_Dataset(data_dir=data_dir, mode=mode, split="val")
+        self.valid_data_loader = torch.utils.data.DataLoader(
+            val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers
+        )
+
+        self.input_dim = train_dataset[0][0].shape[-1] # velikost dat (pro vstupni neur vrstvu)
+        self.mode = mode
+
+    def __iter__(self):
+        return iter(self.data_loader)
+
+    def __len__(self):
+        return len(self.data_loader)
+
+    def split_validation(self):
+        """Return validation DataLoader"""
+        return self.valid_data_loader
+
+class CICIoV2024_DataLoader_no_split(BaseDataLoader):
     """
     DataLoader for CICIoV2024 datasets.
     """
     def __init__(self, data_dir, batch_size, mode=DEFAULT_MODE,
                  shuffle=True, validation_split=0.1, num_workers=2):
-        dataset = CICIoV2024_Dataset(data_dir=data_dir, mode=mode)
+        dataset = CICIoV2024_Dataset_no_split(data_dir=data_dir, mode=mode)
         super().__init__(dataset, batch_size, shuffle, validation_split, num_workers)
