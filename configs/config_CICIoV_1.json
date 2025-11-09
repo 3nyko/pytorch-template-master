@@ -1,5 +1,5 @@
 {
-    "name": "CICIoV2024_hexadecimal_model",
+    "name": "CICIoV2024_my_model",
     "n_gpu": 1,
 
     "arch": {
@@ -7,7 +7,7 @@
         "args": {}
     },
     "data_loader": {
-        "type": "CICIoV2024_data_loader",
+        "type": "CICIoV2024_DataLoader",
         "args": {
             "data_dir": "data/CICIoV2024",
             "batch_size": 128,

@@ -11,6 +11,7 @@ def accuracy(output, target):
 
 
 def top_k_acc(output, target, k=3):
+    k = min(k, output.size(1))  # max = number of classes
     with torch.no_grad():
         pred = torch.topk(output, k, dim=1)[1]
         assert pred.shape[0] == len(target)
