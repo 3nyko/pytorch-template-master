@@ -20,6 +20,21 @@ class Mode(Enum):
 
 DEFAULT_MODE = Mode.HEXADECIMAL 
 
+# for multiclass classification
+USE_MULTICLASS = True
+
+BINCLASS_DICT = {
+    "BENIGN" : 0,
+    "ATTACK" : 1,
+}
+MULTICLASS_DICT = {
+    "BENIGN" : 0,
+    "DOS" : 1,
+    "GAS" : 2,
+    "RPM" : 3,
+    "SPEED" : 4,
+    "STEERING_WHEEL" : 5
+}
 
 
 # ======================================================
@@ -31,7 +46,7 @@ class CICIoV2024_Dataset(Dataset):
     Dataset loader for already split CICIoV2024 dataset
     """
 
-    def __init__(self, data_dir, mode=DEFAULT_MODE, split="train"):
+    def __init__(self, data_dir, mode=DEFAULT_MODE, split="train", multiclass = False):
         self.mode = mode
 
         if split not in ["train", "val", "test"]:
@@ -50,7 +65,10 @@ class CICIoV2024_Dataset(Dataset):
 
         # vyber pouze datové sloupce
         self.data_no_labels = self._remove_labels(self.data)
-        self.labels = self._map_labels(self.data["label"])
+        if multiclass: label_data = self.data["specific_class"]
+        else: label_data = self.data["label"]
+        
+        self.labels = self._map_labels(label_data, multiclass)
 
     def _remove_labels(self, df):
         """Return data columns (DATA_0 ... DATA_7)"""
@@ -59,10 +77,11 @@ class CICIoV2024_Dataset(Dataset):
             raise ValueError("No DATA_ columns found in dataset.")
         return df[feature_cols].values
 
-    def _map_labels(self, labels):
+    def _map_labels(self, labels, multiclass = False):
         """BENIGN = 0, ATTACK = 1"""
-        mapped = labels.str.upper().map(lambda x: 0 if "BENIGN" in x else 1)
-        return mapped.values
+        if multiclass: class_dict = MULTICLASS_DICT
+        else: class_dict = BINCLASS_DICT
+        return(labels.str.upper().map(class_dict))
 
     def __len__(self):
         return len(self.data_no_labels)

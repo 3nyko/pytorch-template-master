@@ -10,6 +10,14 @@ from parse_config import ConfigParser
 from trainer import Trainer
 from utils import prepare_device
 
+import os
+import sys
+import subprocess
+import threading
+import webbrowser
+from pathlib import Path
+
+DEFAULT_CONFIG_PATH = r"C:\Users\fisar\Desktop\Diplomka\pytorch-template-master\configs\config_CICIoV_split.json"
 
 # fix random seeds for reproducibility
 SEED = 123
@@ -20,6 +28,8 @@ np.random.seed(SEED)
 
 def main(config):
     logger = config.get_logger('train')
+
+    start_tensorboard_for_latest()
 
     # setup data_loader instances
     data_loader = config.init_obj('data_loader', module_data)
@@ -54,6 +64,36 @@ def main(config):
 
     trainer.train()
 
+def start_tensorboard():
+    log_dir = os.path.join("saved", "log")
+    subprocess.Popen(["tensorboard", "--logdir", log_dir, "--port", "6006"])
+    threading.Timer(2.0, lambda: webbrowser.open("http://localhost:6006")).start()
+
+def start_tensorboard_for_latest(base_log_dir="saved/log/CICIoV2024_split", port=6006):
+    base = Path(base_log_dir)
+    if not base.exists():
+        print(f"[TensorBoard] Log dir not found: {base.resolve()}")
+        return
+
+    # 🕒 Najdi nejnovější podadresář
+    subdirs = [d for d in base.iterdir() if d.is_dir()]
+    if not subdirs:
+        print(f"[TensorBoard] No subdirectories in {base}")
+        return
+
+    latest_run = max(subdirs, key=lambda p: p.stat().st_mtime)
+    print(f"[TensorBoard] Starting TensorBoard for: {latest_run}")
+
+    # Spusť TensorBoard pouze pro aktuální běh
+    cmd = [
+        sys.executable, "-m", "tensorboard.main",
+        "--logdir", str(latest_run),
+        "--port", str(port),
+        "--host", "127.0.0.1",
+    ]
+    subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+    threading.Timer(2.0, lambda: webbrowser.open(f"http://localhost:{port}")).start()
+
 def print_data_info(data_loader, valid_data_loader):
     """
     Get train and val sample count
@@ -70,7 +110,7 @@ def print_data_info(data_loader, valid_data_loader):
 
 if __name__ == '__main__':
     args = argparse.ArgumentParser(description='PyTorch Template')
-    args.add_argument('-c', '--config', default=None, type=str,
+    args.add_argument('-c', '--config', default=DEFAULT_CONFIG_PATH, type=str,
                       help='config file path (default: None)')
     args.add_argument('-r', '--resume', default=None, type=str,
                       help='path to latest checkpoint (default: None)')

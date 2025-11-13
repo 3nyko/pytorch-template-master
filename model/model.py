@@ -2,7 +2,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from base import BaseModel
 
-NUM_CLASSES = 2 # ATTACK/BENING TODO: Později rozlišovat i Category a Specific_class?
+#NUM_CLASSES = 2 # BENIGN, ATTACK
+NUM_CLASSES = 6 # BENIGN, DOS, GAS, RPM, SPEED, STEERING_WHEEL
 INPUT_DIM = 8 # DATA_0 až _7
 
 # =====================================================
