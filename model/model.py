@@ -28,8 +28,9 @@ class IoV_model(BaseModel):
         x = F.relu(self.bn2(self.fc2(x)))
         x = self.dropout(x)
         x = self.fc3(x)
+        x = F.log_softmax(x, dim=1)
 
-        return F.log_softmax(x, dim=1)
+        return x
 
 
 # =====================================================

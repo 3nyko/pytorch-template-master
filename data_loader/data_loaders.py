@@ -87,7 +87,7 @@ class CICIoV2024_Dataset(Dataset):
         return len(self.data_no_labels)
 
     def __getitem__(self, idx):
-        x = self.data_no_labels[idx].copy()
+        data = self.data_no_labels[idx].copy()
 
         def safe_int(val, base):
             # Pandas často čte hodnoty jako float → přetypujeme na string
@@ -100,17 +100,17 @@ class CICIoV2024_Dataset(Dataset):
 
         # Převod podle módu
         if self.mode in [Mode.BINARY, Mode.BINARY.value]:
-            x = [safe_int(v, base=2) for v in x]
+            data = [safe_int(v, base=2) for v in data]
         elif self.mode in [Mode.HEXADECIMAL, Mode.HEXADECIMAL.value]:
-            x = [safe_int(v, base=16) for v in x]
+            data = [safe_int(v, base=16) for v in data]
         elif self.mode in [Mode.DECIMAL, Mode.DECIMAL.value]:
-            x = [float(v) if not pd.isna(v) else 0.0 for v in x]
+            data = [float(v) if not pd.isna(v) else 0.0 for v in data]
         else:
             raise ValueError(f"Unsupported mode: {self.mode}")
 
-        x = torch.tensor(x, dtype=torch.float32)
-        y = torch.tensor(self.labels[idx], dtype=torch.long)
-        return x, y
+        data = torch.tensor(data, dtype=torch.float32)
+        labels = torch.tenslabelsr(self.labels[idx], dtype=torch.long)
+        return data, labels
 
 
 class CICIoV2024_Dataset_no_split(Dataset):
@@ -203,7 +203,7 @@ class CICIoV2024_DataLoader:
             val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers
         )
 
-        self.input_dim = train_dataset[0][0].shape[-1] # velikost dat (pro vstupni neur vrstvu)
+        self.input_dim = train_dataset[0][0].shape[-1] # velikost dat (pro vstupni neur vrstvu) - 8
         self.mode = mode
 
     def __iter__(self):

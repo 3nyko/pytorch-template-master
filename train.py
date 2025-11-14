@@ -75,7 +75,7 @@ def start_tensorboard_for_latest(base_log_dir="saved/log/CICIoV2024_split", port
         print(f"[TensorBoard] Log dir not found: {base.resolve()}")
         return
 
-    # 🕒 Najdi nejnovější podadresář
+    # Najdi nejnovější podadresář
     subdirs = [d for d in base.iterdir() if d.is_dir()]
     if not subdirs:
         print(f"[TensorBoard] No subdirectories in {base}")
