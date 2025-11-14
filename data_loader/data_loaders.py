@@ -109,7 +109,7 @@ class CICIoV2024_Dataset(Dataset):
             raise ValueError(f"Unsupported mode: {self.mode}")
 
         data = torch.tensor(data, dtype=torch.float32)
-        labels = torch.tenslabelsr(self.labels[idx], dtype=torch.long)
+        labels = torch.tensor(self.labels[idx], dtype=torch.long)
         return data, labels
 
 
@@ -192,13 +192,13 @@ class CICIoV2024_DataLoader:
     def __init__(self, data_dir, batch_size, mode=DEFAULT_MODE, num_workers=2, shuffle=True):
         self.batch_size = batch_size
         # trénovací dataset
-        train_dataset = CICIoV2024_Dataset(data_dir=data_dir, mode=mode, split="train")
+        train_dataset = CICIoV2024_Dataset(data_dir=data_dir, mode=mode, split="train", multiclass=USE_MULTICLASS)
         self.data_loader = torch.utils.data.DataLoader(
             train_dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers
         )
 
         # validační dataset
-        val_dataset = CICIoV2024_Dataset(data_dir=data_dir, mode=mode, split="val")
+        val_dataset = CICIoV2024_Dataset(data_dir=data_dir, mode=mode, split="val", multiclass=USE_MULTICLASS)
         self.valid_data_loader = torch.utils.data.DataLoader(
             val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers
         )
